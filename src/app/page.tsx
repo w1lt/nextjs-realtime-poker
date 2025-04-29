@@ -1,103 +1,135 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import Link from "next/link";
+import { toast } from "sonner";
+import { createGame, leaveGame } from "@/lib/poker";
+import { usePlayerSession } from "@/hooks/usePlayerSession";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const router = useRouter();
+  const [isCreating, setIsCreating] = useState(false);
+  const [isLeaving, setIsLeaving] = useState(false);
+  const { playerSession, isLoaded, clearSession } = usePlayerSession();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  const handleCreateGame = async () => {
+    setIsCreating(true);
+    try {
+      const result = await createGame();
+      if (result.success) {
+        toast.success(`Game created: ${result.data.roomCode}`);
+        router.push(`/game/${result.data.roomCode}`);
+      } else {
+        toast.error(result.message || "Failed to create game");
+      }
+    } catch (err) {
+      toast.error("An error occurred while creating the game.");
+      console.error(err);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleLeaveAndClear = async () => {
+    if (!playerSession) return;
+    setIsLeaving(true);
+    try {
+      const leaveResult = await leaveGame(
+        playerSession.gameId,
+        playerSession.id
+      );
+      if (!leaveResult.success && leaveResult.error !== "PLAYER_NOT_FOUND") {
+        // Allow leaving even if player not found in DB (might be stale session)
+        console.warn("Leave game issue:", leaveResult.message);
+        toast.error(`Failed to leave game cleanly: ${leaveResult.message}`);
+        // Proceed to clear session anyway
+      }
+      // Clear local session regardless of DB result (unless specific errors occur)
+      clearSession();
+      toast.success("Left game and cleared session.");
+    } catch (err) {
+      toast.error("An error occurred while leaving the game.");
+      console.error(err);
+      // Optionally clear session even on error?
+      // clearSession();
+    } finally {
+      setIsLeaving(false);
+    }
+  };
+
+  const renderContent = () => {
+    if (!isLoaded) {
+      return <p>Loading session...</p>; // Or a spinner
+    }
+
+    if (playerSession) {
+      return (
+        <CardContent className="flex flex-col gap-4">
+          <p className="text-center text-sm text-muted-foreground">
+            You are in game:{" "}
+            <strong className="text-foreground">
+              {playerSession.roomCode}
+            </strong>
+          </p>
+          <Button
+            onClick={() => router.push(`/game/${playerSession.roomCode}`)}
+            className="w-full"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            Rejoin Game ({playerSession.roomCode})
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleLeaveAndClear}
+            disabled={isLeaving}
+            className="w-full"
           >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+            {isLeaving ? "Leaving..." : "Leave Game & Clear Session"}
+          </Button>
+        </CardContent>
+      );
+    }
+
+    // Default: No active session
+    return (
+      <CardContent className="flex flex-col gap-4">
+        <Button
+          onClick={handleCreateGame}
+          disabled={isCreating}
+          className="w-full"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          {isCreating ? "Creating Game..." : "Create New Game"}
+        </Button>
+        <Link href="/join" className="w-full">
+          <Button variant="outline" className="w-full">
+            Join Game
+          </Button>
+        </Link>
+      </CardContent>
+    );
+  };
+
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>Realtime Poker</CardTitle>
+          <CardDescription>
+            {playerSession
+              ? "Manage your active game session"
+              : "Create a new game or join an existing one"}
+          </CardDescription>
+        </CardHeader>
+        {renderContent()}
+      </Card>
+    </main>
   );
 }

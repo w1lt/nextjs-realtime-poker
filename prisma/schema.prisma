@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Game {
+  id          String          @id @default(cuid())
+  roomCode    String          @unique
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  smallBlind  Int             @default(5)
+  bigBlind    Int             @default(10)
+  creatorId   String?
+  actions     Action[]
+  creator     Player?         @relation("GameCreator", fields: [creatorId], references: [id])
+  gameState   GameState?
+  players     Player[]
+  sessions    PlayerSession[]
+}
+
+model Player {
+  id           String          @id @default(cuid())
+  name         String
+  seat         Int
+  chipCount    Int             @default(1000)
+  currentBet   Int             @default(0)
+  isActive     Boolean         @default(true)
+  gameId       String
+  actions      Action[]
+  createdGames Game[]          @relation("GameCreator")
+  game         Game            @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  sessions     PlayerSession[]
+
+  @@unique([gameId, seat])
+  @@unique([gameId, name])
+}
+
+model GameState {
+  id          String    @id @default(cuid())
+  gameId      String    @unique
+  phase       GamePhase
+  potSize     Int
+  currentTurn Int?
+  dealerSeat  Int?
+  highestBet  Int       @default(0)
+  updatedAt   DateTime  @updatedAt
+  game        Game      @relation(fields: [gameId], references: [id], onDelete: Cascade)
+}
+
+model Action {
+  id        String     @id @default(cuid())
+  gameId    String
+  playerId  String
+  type      ActionType
+  amount    Int?
+  phase     GamePhase?
+  createdAt DateTime   @default(now())
+  game      Game       @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player    Player     @relation(fields: [playerId], references: [id], onDelete: Cascade)
+}
+
+model PlayerSession {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  playerId  String
+  gameId    String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([playerId, gameId])
+}
+
+enum GamePhase {
+  SETUP
+  PREFLOP
+  FLOP
+  TURN
+  RIVER
+  SHOWDOWN
+  GAMEOVER
+  HAND_OVER
+}
+
+enum ActionType {
+  FOLD
+  CHECK
+  CALL
+  BET
+  RAISE
+  SMALL_BLIND
+  BIG_BLIND
+  WIN
+  SIT_OUT
+  SIT_IN
+  PENDING_SMALL_BLIND
+  PENDING_BIG_BLIND
+}
