@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,16 +15,8 @@ import { getGameByRoomCode } from "@/lib/poker";
 
 export default function JoinGame() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [roomCode, setRoomCode] = useState("");
   const [isJoining, setIsJoining] = useState(false);
-
-  useEffect(() => {
-    const code = searchParams.get("code");
-    if (code) {
-      setRoomCode(code.toUpperCase());
-    }
-  }, [searchParams]);
 
   const handleJoinGame = async (e: React.FormEvent) => {
     e.preventDefault();
