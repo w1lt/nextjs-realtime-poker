@@ -13,13 +13,14 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import { createGame, leaveGame } from "@/lib/poker";
-import { usePlayerSession } from "@/hooks/usePlayerSession";
+import { usePlayerSessionContext } from "@/context/PlayerSessionContext";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function Home() {
   const router = useRouter();
   const [isCreating, setIsCreating] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
-  const { playerSession, isLoaded, clearSession } = usePlayerSession();
+  const { playerSession, isLoaded, clearSession } = usePlayerSessionContext();
 
   const handleCreateGame = async () => {
     setIsCreating(true);
@@ -68,7 +69,11 @@ export default function Home() {
 
   const renderContent = () => {
     if (!isLoaded) {
-      return <p>Loading session...</p>; // Or a spinner
+      return (
+        <CardContent className="flex items-center justify-center p-8">
+          <Spinner size={32} />
+        </CardContent>
+      );
     }
 
     if (playerSession) {
@@ -92,7 +97,13 @@ export default function Home() {
             disabled={isLeaving}
             className="w-full"
           >
-            {isLeaving ? "Leaving..." : "Leave Game & Clear Session"}
+            {isLeaving ? (
+              <>
+                <Spinner size={20} className="mr-2" /> Leaving...
+              </>
+            ) : (
+              "Leave Game & Clear Session"
+            )}
           </Button>
         </CardContent>
       );
@@ -106,7 +117,13 @@ export default function Home() {
           disabled={isCreating}
           className="w-full"
         >
-          {isCreating ? "Creating Game..." : "Create New Game"}
+          {isCreating ? (
+            <>
+              <Spinner size={20} className="mr-2" /> Creating Game...
+            </>
+          ) : (
+            "Create New Game"
+          )}
         </Button>
         <Link href="/join" className="w-full">
           <Button variant="outline" className="w-full">

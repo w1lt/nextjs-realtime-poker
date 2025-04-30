@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { getGameByRoomCode } from "@/lib/poker";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function JoinGame() {
   const router = useRouter();
@@ -63,7 +64,13 @@ export default function JoinGame() {
               maxLength={6}
             />
             <Button type="submit" disabled={isJoining} className="w-full">
-              {isJoining ? "Joining..." : "Join Game"}
+              {isJoining ? (
+                <>
+                  <Spinner size={20} className="mr-2" /> Joining...
+                </>
+              ) : (
+                "Join Game"
+              )}
             </Button>
           </form>
         </CardContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { startGame } from "@/lib/poker";
-import { usePlayerSession } from "@/hooks/usePlayerSession";
+import { usePlayerSessionContext } from "@/context/PlayerSessionContext";
+import { Spinner } from "./ui/spinner";
 
 interface Player {
   id: string;
@@ -34,43 +35,41 @@ export function WaitingRoom({
   creatorId,
 }: WaitingRoomProps) {
   const [isStarting, setIsStarting] = useState(false);
-  const { playerSession } = usePlayerSession();
-  const [isCreator, setIsCreator] = useState(false);
+  const { playerSession } = usePlayerSessionContext();
 
-  // More robust creator check with debug information
-  useEffect(() => {
-    // Log all relevant information
-    console.log("WaitingRoom - Creator Check:", {
-      creatorId,
-      playerSession,
-      players,
-    });
-
-    if (!playerSession) {
-      console.log("WaitingRoom - No player session found");
-      return;
-    }
-
-    if (!creatorId) {
-      console.log("WaitingRoom - No creatorId provided");
-      return;
-    }
-
-    // Check if the current player is the creator
-    const isCurrentPlayerCreator = playerSession.id === creatorId;
-    console.log("WaitingRoom - Creator check result:", {
-      playerSessionId: playerSession.id,
-      creatorId,
-      isMatch: isCurrentPlayerCreator,
-    });
-
-    setIsCreator(isCurrentPlayerCreator);
-  }, [playerSession, creatorId, players]);
+  // --- Calculate isCreator directly during render ---
+  const isCreator = !!playerSession && playerSession.id === creatorId;
+  console.log("WaitingRoom Render Check (Context):", {
+    playerSessionId: playerSession?.id,
+    creatorId,
+    calculatedIsCreator: isCreator,
+  });
+  // ---------------------------------------------------
 
   const copyInviteLink = () => {
     const inviteLink = `${window.location.origin}/game/${roomCode}`;
-    navigator.clipboard.writeText(inviteLink);
-    toast.success("Invite link copied to clipboard");
+
+    if (!navigator.clipboard) {
+      toast.error(
+        "Clipboard API not available. Ensure you're using HTTPS or localhost."
+      );
+      console.error(
+        "navigator.clipboard is undefined. Link to copy manually:",
+        inviteLink
+      );
+      // Optionally, show the link in the UI for manual copying
+      return;
+    }
+
+    navigator.clipboard
+      .writeText(inviteLink)
+      .then(() => {
+        toast.success("Invite link copied to clipboard");
+      })
+      .catch((err) => {
+        toast.error("Failed to copy link.");
+        console.error("Could not copy text: ", err);
+      });
   };
 
   const handleStartGame = async () => {
@@ -92,19 +91,6 @@ export function WaitingRoom({
     } finally {
       setIsStarting(false);
     }
-  };
-
-  // Add debug UI for creator status
-  const debugCreator = () => {
-    if (process.env.NODE_ENV === "development") {
-      return (
-        <div className="text-xs text-gray-400 mt-1">
-          Your ID: {playerSession?.id?.substring(0, 8)}... | Creator ID:{" "}
-          {creatorId?.substring(0, 8)}... | Match: {String(isCreator)}
-        </div>
-      );
-    }
-    return null;
   };
 
   return (
@@ -174,7 +160,6 @@ export function WaitingRoom({
               ? "You are the game creator"
               : "Waiting for the creator to start the game"}
           </CardDescription>
-          {debugCreator()}
         </CardHeader>
         {isCreator && (
           <CardContent>
@@ -183,7 +168,13 @@ export function WaitingRoom({
               disabled={players.length < 2 || isStarting}
               className="w-full"
             >
-              {isStarting ? "Starting Game..." : "Start Game"}
+              {isStarting ? (
+                <>
+                  <Spinner size={20} className="mr-2" /> Starting Game...
+                </>
+              ) : (
+                "Start Game"
+              )}
             </Button>
           </CardContent>
         )}

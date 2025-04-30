@@ -10,14 +10,16 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { usePlayerSession } from "@/hooks/usePlayerSession";
+import { usePlayerSessionContext } from "@/context/PlayerSessionContext";
 import { performPlayerAction, performAction } from "@/lib/poker";
 import {
   IconChevronDown,
   IconChevronUp,
   IconClockHour4,
+  IconX,
 } from "@tabler/icons-react";
 import { Act, GameSnapshot, GameActionRecord } from "@/lib/poker/types";
+import { Spinner } from "./ui/spinner";
 
 interface ActiveGameProps {
   game: GameSnapshot;
@@ -26,12 +28,15 @@ interface ActiveGameProps {
 export function ActiveGame({ game }: ActiveGameProps) {
   console.log("ActiveGame received game prop:", game);
 
-  const { playerSession } = usePlayerSession();
+  const { playerSession } = usePlayerSessionContext();
   const playerData = playerSession;
 
   const [showRaiseModal, setShowRaiseModal] = useState(false);
   const [raiseAmount, setRaiseAmount] = useState(0);
-  const [isPerformingAction, setIsPerformingAction] = useState(false);
+  const [isFolding, setIsFolding] = useState(false);
+  const [isCalling, setIsCalling] = useState(false);
+  const [isRaising, setIsRaising] = useState(false);
+  const [isDeclaringWinner, setIsDeclaringWinner] = useState(false);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
   const [isGameInfoCollapsed, setIsGameInfoCollapsed] = useState(true);
@@ -104,7 +109,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
   const isHeadsUp = game.players.filter((p) => !p.isSittingOut).length === 2;
 
   const isFoldDisabled = () => {
-    if (!isUserTurn || isPerformingAction) return true;
+    if (!isUserTurn || isFolding) return true;
     const blindType = needsToPostBlind();
     if (blindType) return true;
     const lastRaiseAction = game.actions?.find(
@@ -115,13 +120,13 @@ export function ActiveGame({ game }: ActiveGameProps) {
   };
 
   const isCallDisabled = () => {
-    if (!isUserTurn || isPerformingAction) return true;
+    if (!isUserTurn || isCalling) return true;
 
     return false;
   };
 
   const isRaiseDisabled = () => {
-    if (!isUserTurn || isPerformingAction) return true;
+    if (!isUserTurn || isRaising) return true;
 
     const minimumRaise = game.smallBlind * 2;
     if (userPlayer && userPlayer.chipCount < minimumRaise) return true;
@@ -183,7 +188,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
     if (!isUserTurn || !playerData) return;
 
     try {
-      setIsPerformingAction(true);
+      setIsFolding(true);
       const result = await performPlayerAction(
         game.id,
         playerData.id,
@@ -199,7 +204,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
       console.error("Failed to fold:", error);
       toast.error("Failed to perform action");
     } finally {
-      setIsPerformingAction(false);
+      setIsFolding(false);
     }
   };
 
@@ -214,7 +219,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
     );
 
     try {
-      setIsPerformingAction(true);
+      setIsCalling(true);
 
       const blindType = needsToPostBlind();
       if (blindType) {
@@ -256,7 +261,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
       console.error("Failed to call/check:", error);
       toast.error("Failed to perform action");
     } finally {
-      setIsPerformingAction(false);
+      setIsCalling(false);
     }
   };
 
@@ -264,7 +269,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
     if (!isUserTurn || !playerData || raiseAmount <= 0) return;
 
     try {
-      setIsPerformingAction(true);
+      setIsRaising(true);
       const result = await performPlayerAction(
         game.id,
         playerData.id,
@@ -283,7 +288,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
       console.error("Failed to raise:", error);
       toast.error("Failed to perform action");
     } finally {
-      setIsPerformingAction(false);
+      setIsRaising(false);
     }
   };
 
@@ -326,7 +331,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
     if (!selectedWinner || !playerData) return;
 
     try {
-      setIsPerformingAction(true);
+      setIsDeclaringWinner(true);
       const result = await performAction(game.id, "WIN", 0, selectedWinner);
 
       if (!result.success) {
@@ -345,7 +350,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
       console.error("Failed to declare winner:", error);
       toast.error("Failed to declare winner");
     } finally {
-      setIsPerformingAction(false);
+      setIsDeclaringWinner(false);
     }
   };
 
@@ -711,11 +716,19 @@ export function ActiveGame({ game }: ActiveGameProps) {
                         <Button
                           variant="default"
                           onClick={handleCall}
-                          disabled={isPerformingAction}
+                          disabled={isCalling}
                         >
-                          {needsToPostBlind() === "SMALL_BLIND"
-                            ? `Post Small Blind ($${game.smallBlind})`
-                            : `Post Big Blind ($${game.bigBlind})`}
+                          {needsToPostBlind() === "SMALL_BLIND" ? (
+                            isCalling ? (
+                              <Spinner size={20} />
+                            ) : (
+                              `Post Small Blind ($${game.smallBlind})`
+                            )
+                          ) : isCalling ? (
+                            <Spinner size={20} />
+                          ) : (
+                            `Post Big Blind ($${game.bigBlind})`
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -724,23 +737,32 @@ export function ActiveGame({ game }: ActiveGameProps) {
                       <Button
                         variant="destructive"
                         onClick={handleFold}
-                        disabled={isFoldDisabled()}
+                        disabled={isFoldDisabled() || isFolding}
                         className="flex-1"
                       >
-                        Fold
+                        {isFolding ? <Spinner size={20} /> : "Fold"}
                       </Button>
                       <Button
                         variant="outline"
                         onClick={handleCall}
-                        disabled={isCallDisabled()}
+                        disabled={isCallDisabled() || isCalling}
                         className="flex-1"
                       >
-                        {getCallButtonText()}
+                        {isCalling ? (
+                          <Spinner size={20} />
+                        ) : (
+                          getCallButtonText()
+                        )}
                       </Button>
                       <Button
                         variant="default"
                         onClick={() => setShowRaiseModal(true)}
-                        disabled={isRaiseDisabled()}
+                        disabled={
+                          isRaiseDisabled() ||
+                          isFolding ||
+                          isCalling ||
+                          isRaising
+                        }
                         className="flex-1"
                       >
                         {getRaiseButtonText()}
@@ -777,12 +799,13 @@ export function ActiveGame({ game }: ActiveGameProps) {
             {game.actions && game.actions.length > 0 ? (
               <div className="space-y-4 max-h-[350px] overflow-y-auto pr-1">
                 {Object.entries(groupActionsByHand())
-                  .sort(([handA], [handB]) => parseInt(handA) - parseInt(handB))
+                  .sort(([handA], [handB]) => parseInt(handB) - parseInt(handA))
                   .map(([handNumber, actions]) => (
                     <div key={`hand-${handNumber}`} className="mb-2">
                       <div
                         className={`flex items-center gap-2 mb-1.5 ${
-                          parseInt(handNumber) > 1
+                          parseInt(handNumber) <
+                          Object.keys(groupActionsByHand()).length
                             ? "mt-3 pt-3 border-t border-gray-200 dark:border-gray-700"
                             : ""
                         }`}
@@ -840,8 +863,19 @@ export function ActiveGame({ game }: ActiveGameProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="mb-4 text-center text-3xl font-bold">
-                ${raiseAmount}
+              <div className="mb-4 text-center relative">
+                <span className="text-3xl font-bold">${raiseAmount}</span>
+                {raiseAmount > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setRaiseAmount(0)}
+                    className="absolute top-1/2 right-4 -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
+                    aria-label="Clear raise amount"
+                  >
+                    <IconX className="h-5 w-5" />
+                  </Button>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-2 mb-4">
@@ -870,9 +904,9 @@ export function ActiveGame({ game }: ActiveGameProps) {
                 <Button
                   variant="default"
                   onClick={handleRaise}
-                  disabled={raiseAmount <= 0 || isPerformingAction}
+                  disabled={raiseAmount <= 0 || isRaising}
                 >
-                  Raise ${raiseAmount}
+                  {isRaising ? <Spinner size={20} /> : `Raise $${raiseAmount}`}
                 </Button>
               </div>
             </CardContent>
@@ -943,9 +977,9 @@ export function ActiveGame({ game }: ActiveGameProps) {
                 <Button
                   variant="default"
                   onClick={handleDeclareWinner}
-                  disabled={!selectedWinner || isPerformingAction}
+                  disabled={!selectedWinner || isDeclaringWinner}
                 >
-                  Confirm Winner
+                  {isDeclaringWinner ? <Spinner size={20} /> : "Confirm Winner"}
                 </Button>
               </div>
             </CardContent>

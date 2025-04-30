@@ -13,12 +13,13 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { getGameByRoomCode, joinGame, leaveGame } from "@/lib/poker";
-import { usePlayerSession } from "@/hooks/usePlayerSession";
+import { usePlayerSessionContext } from "@/context/PlayerSessionContext";
 import { WaitingRoom } from "@/components/waiting-room";
 import { ActiveGame } from "@/components/active-game";
 import { GameSummary } from "@/components/game-summary";
 import { GameSnapshot } from "@/lib/poker/types";
 import { HandSummary } from "@/components/hand-summary";
+import { Spinner } from "@/components/ui/spinner";
 
 export default function GamePage() {
   const params = useParams();
@@ -33,9 +34,10 @@ export default function GamePage() {
   const [reconnectToastId, setReconnectToastId] = useState<
     string | number | null
   >(null);
+  const [isLeaving, setIsLeaving] = useState(false);
 
   const { playerSession, saveSession, clearSession, isLoaded } =
-    usePlayerSession();
+    usePlayerSessionContext();
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const roomCode = params.roomCode as string;
 
@@ -396,6 +398,7 @@ export default function GamePage() {
     if (!playerSession || !game) return;
 
     try {
+      setIsLeaving(true);
       const result = await leaveGame(game.id, playerSession.id);
 
       if (!result.success) {
@@ -408,13 +411,15 @@ export default function GamePage() {
     } catch (error) {
       console.error("Failed to leave game:", error);
       toast.error("Failed to leave game");
+    } finally {
+      setIsLeaving(false);
     }
   };
 
   if (!game) {
     return (
       <main className="flex min-h-screen items-center justify-center">
-        <p>Loading...</p>
+        <Spinner size={48} />
       </main>
     );
   }
@@ -424,8 +429,18 @@ export default function GamePage() {
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-2xl font-bold">{game.roomCode}</h1>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleLeaveGame}>
-            Leave Game
+          <Button
+            variant="outline"
+            onClick={handleLeaveGame}
+            disabled={isLeaving}
+          >
+            {isLeaving ? (
+              <>
+                <Spinner size={20} className="mr-2" /> Leaving
+              </>
+            ) : (
+              "Leave Game"
+            )}
           </Button>
 
           <Dialog
@@ -470,7 +485,13 @@ export default function GamePage() {
                   disabled={isJoining}
                   className="w-full"
                 >
-                  {isJoining ? "Joining..." : "Join Game"}
+                  {isJoining ? (
+                    <>
+                      <Spinner size={20} className="mr-2" /> Joining...
+                    </>
+                  ) : (
+                    "Join Game"
+                  )}
                 </Button>
               </div>
             </DialogContent>
