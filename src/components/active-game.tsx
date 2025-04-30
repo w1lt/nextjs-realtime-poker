@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -41,6 +41,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
   const [selectedWinner, setSelectedWinner] = useState<string | null>(null);
   const [isGameInfoCollapsed, setIsGameInfoCollapsed] = useState(true);
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(true);
+  const lastProcessedActionIdRef = useRef<string | null>(null);
 
   const currentPlayer = game.players.find((p) => p.seat === game.currentTurn);
   console.log("Current player identified by turn:", currentPlayer);
@@ -308,7 +309,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
     }
   }, [showRaiseModal]);
 
-  const getPhaseDisplay = (phase: string | undefined) => {
+  const getPhaseDisplay = useCallback((phase: string | undefined) => {
     switch (phase) {
       case "SETUP":
         return "Setup (Posting Blinds)";
@@ -325,7 +326,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
       default:
         return phase || "UNKNOWN";
     }
-  };
+  }, []);
 
   const handleDeclareWinner = async () => {
     if (!selectedWinner || !playerData) return;
@@ -354,7 +355,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
     }
   };
 
-  const formatActionType = (type: string) => {
+  const formatActionType = useCallback((type: string) => {
     switch (type) {
       case "FOLD":
         return "Folded";
@@ -377,7 +378,7 @@ export function ActiveGame({ game }: ActiveGameProps) {
       default:
         return type;
     }
-  };
+  }, []);
 
   const formatTimestamp = (date: Date) => {
     return new Date(date).toLocaleTimeString([], {
@@ -405,6 +406,108 @@ export function ActiveGame({ game }: ActiveGameProps) {
     });
     return grouped;
   };
+
+  // Effect to initialize lastProcessedActionId on mount
+  useEffect(() => {
+    if (game.actions && game.actions.length > 0) {
+      // Sort actions by creation time, newest first
+      const sortedActions = [...game.actions].sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      // Initialize ref with the ID of the most recent action
+      lastProcessedActionIdRef.current = sortedActions[0].id;
+      console.log(
+        "Initialized lastProcessedActionIdRef:",
+        lastProcessedActionIdRef.current
+      );
+    }
+    // Intentionally using [] to run only once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Effect to show toasts for new actions from other players
+  useEffect(() => {
+    // Ensure necessary data is available
+    if (!game.actions || game.actions.length === 0 || !playerData) {
+      console.log("Skipping toast effect: No actions, or no player data");
+      return;
+    }
+
+    // Sort actions by creation time, newest first
+    const sortedActions = [...game.actions].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+
+    // Find the index of the last action we processed
+    const lastProcessedIndex = sortedActions.findIndex(
+      (action) => action.id === lastProcessedActionIdRef.current
+    );
+
+    // Determine which actions are new since the last check
+    // If last processed ID wasn't found (e.g., history cleared), process all actions as potentially new
+    // Otherwise, slice the array to get only actions newer than the last processed one
+    const newActions =
+      lastProcessedIndex === -1
+        ? sortedActions
+        : sortedActions.slice(0, lastProcessedIndex);
+
+    console.log("Toast Effect Check:", {
+      actionsCount: game.actions.length,
+      lastProcessedId: lastProcessedActionIdRef.current,
+      lastProcessedIndex,
+      newActionsCount: newActions.length,
+      // Uncomment for detailed debugging if needed:
+      // sortedActions: sortedActions.map(a => ({id: a.id, type: a.type, player: a.playerId})),
+      // newActions: newActions.map(a => ({id: a.id, type: a.type, player: a.playerId}))
+    });
+
+    // If there are new actions to process
+    if (newActions.length > 0) {
+      // Process the new actions in chronological order (oldest first)
+      newActions.reverse().forEach((action) => {
+        // Check if the action was NOT performed by the current user
+        if (action.playerId !== playerData.id) {
+          const player = game.players.find((p) => p.id === action.playerId);
+          const playerName = player?.name || "Unknown Player";
+
+          // Determine the message, handling CALL ambiguity
+          let baseActionText = formatActionType(action.type);
+          if (action.type === "CALL") {
+            // Since we don't have historical context for CALL vs CHECK,
+            // use a combined term for other players' toasts.
+            baseActionText = "Called / Checked";
+          }
+
+          let message = `${playerName} ${baseActionText}`;
+          if (action.amount && action.type !== "CALL") {
+            // Append amount only if it exists and isn't part of CALL
+            message += ` $${action.amount}`;
+          }
+
+          // Display the toast notification
+          toast(message);
+          console.log("Showing toast for other player:", message);
+        }
+      });
+
+      // Update the ref to store the ID of the newest action processed in this batch
+      lastProcessedActionIdRef.current = sortedActions[0].id;
+      console.log(
+        "Updated lastProcessedActionIdRef:",
+        lastProcessedActionIdRef.current
+      );
+    }
+    // Dependencies ensure this effect runs when actions, player data, or relevant functions change
+  }, [
+    game.actions,
+    game.players,
+    playerData,
+    formatActionType,
+    getPhaseDisplay,
+    game.phase,
+  ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -685,11 +788,8 @@ export function ActiveGame({ game }: ActiveGameProps) {
             <Card>
               <CardHeader>
                 <CardTitle>
-                  {isUserTurn ? "Your Turn" : "Game Status"}
+                  {isUserTurn ? "Your Turn" : waitingMessage}
                 </CardTitle>
-                <CardDescription>
-                  {isUserTurn ? "Choose your action" : waitingMessage}
-                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="mb-4 p-3 bg-muted/50 rounded-md border text-sm space-y-1">
