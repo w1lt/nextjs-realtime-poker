@@ -1,0 +1,45 @@
+.container {
+  position: fixed; /* Or absolute, depending on layout needs */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Hide chips that go off-screen */
+  z-index: -1; /* Place behind other content */
+  pointer-events: none; /* Allow clicks to pass through */
+}
+
+.chip {
+  position: absolute;
+  top: -30px; /* Start above the screen */
+  width: 25px; /* Slightly wider to fit text comfortably */
+  height: 25px; /* Slightly taller */
+  border-radius: 50%;
+  opacity: 0.7;
+  /* Basic box shadow for a slight 3D effect */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  animation-name: fall;
+  animation-timing-function: linear; /* Constant falling speed */
+  animation-iteration-count: infinite;
+
+  /* Styles to center the text */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white; /* Text color */
+  font-size: 10px; /* Adjust size as needed */
+  font-weight: bold;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.3); /* Slight shadow for readability */
+}
+
+@keyframes fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.7;
+  }
+  100% {
+    /* Fall down the full height plus a bit more to ensure they disappear */
+    transform: translateY(105vh) rotate(720deg);
+    opacity: 0;
+  }
+}

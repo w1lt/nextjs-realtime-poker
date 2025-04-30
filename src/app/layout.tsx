@@ -8,8 +8,8 @@ import { PlayerSessionProvider } from "@/context/PlayerSessionContext";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Realtime Poker",
-  description: "A real-time poker game state tracker",
+  title: "InstaPoker",
+  description: "Play poker with your friends!",
 };
 
 export default function RootLayout({

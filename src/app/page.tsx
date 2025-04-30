@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,6 +16,7 @@ import { toast } from "sonner";
 import { createGame, leaveGame } from "@/lib/poker";
 import { usePlayerSessionContext } from "@/context/PlayerSessionContext";
 import { Spinner } from "@/components/ui/spinner";
+import FallingChipsBackground from "@/components/falling-chips-background";
 
 export default function Home() {
   const router = useRouter();
@@ -135,10 +137,18 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4">
+    <main className="relative flex min-h-screen flex-col items-center justify-center p-4 gap-6 overflow-hidden">
+      <FallingChipsBackground />
+      <Image
+        src="/images/logo.png"
+        alt="Realtime Poker Logo"
+        width={150}
+        height={150}
+        priority
+      />
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Realtime Poker</CardTitle>
+          <CardTitle>InstaPoker</CardTitle>
           <CardDescription>
             {playerSession
               ? "Manage your active game session"

@@ -97,8 +97,7 @@ export function WaitingRoom({
     <div className="flex flex-col gap-4">
       <Card>
         <CardHeader>
-          <CardTitle>Waiting for Players</CardTitle>
-          <CardDescription>Share this link with other players</CardDescription>
+          <CardTitle>Waiting for Players...</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center gap-4">
