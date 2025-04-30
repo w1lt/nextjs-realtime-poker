@@ -28,6 +28,7 @@ export default function Home() {
     setIsCreating(true);
     try {
       const result = await createGame();
+      setIsCreating(false);
       if (result.success) {
         toast.success(`Game created: ${result.data.roomCode}`);
         router.push(`/game/${result.data.roomCode}`);
@@ -35,10 +36,9 @@ export default function Home() {
         toast.error(result.message || "Failed to create game");
       }
     } catch (err) {
+      setIsCreating(false);
       toast.error("An error occurred while creating the game.");
       console.error(err);
-    } finally {
-      setIsCreating(false);
     }
   };
 
@@ -142,8 +142,8 @@ export default function Home() {
       <Image
         src="/images/logo.png"
         alt="Realtime Poker Logo"
-        width={150}
-        height={150}
+        width={100}
+        height={100}
         priority
       />
       <Card className="w-full max-w-md">
