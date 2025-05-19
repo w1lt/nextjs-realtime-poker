@@ -112,6 +112,31 @@ export function WaitingRoom({
           </div>
         </CardContent>
       </Card>
+      <Card>
+        {!isCreator && (
+          <CardHeader>
+            <CardDescription>Waiting for creator to start game</CardDescription>
+          </CardHeader>
+        )}
+
+        {isCreator && (
+          <CardContent>
+            <Button
+              onClick={handleStartGame}
+              disabled={players.length < 2 || isStarting}
+              className="w-full"
+            >
+              {isStarting ? (
+                <>
+                  <Spinner size={20} className="mr-2" /> Starting Game...
+                </>
+              ) : (
+                "Start Game"
+              )}
+            </Button>
+          </CardContent>
+        )}
+      </Card>
 
       <Card>
         <CardHeader>
@@ -150,33 +175,6 @@ export function WaitingRoom({
             ))}
           </div>
         </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardDescription>
-            {isCreator
-              ? "You are the game creator"
-              : "Waiting for the creator to start the game"}
-          </CardDescription>
-        </CardHeader>
-        {isCreator && (
-          <CardContent>
-            <Button
-              onClick={handleStartGame}
-              disabled={players.length < 2 || isStarting}
-              className="w-full"
-            >
-              {isStarting ? (
-                <>
-                  <Spinner size={20} className="mr-2" /> Starting Game...
-                </>
-              ) : (
-                "Start Game"
-              )}
-            </Button>
-          </CardContent>
-        )}
       </Card>
     </div>
   );
