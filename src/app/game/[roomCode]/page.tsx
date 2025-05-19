@@ -468,17 +468,91 @@ export default function GamePage() {
                   placeholder="Your name"
                   className="w-full p-2 border rounded-md"
                 />
-                <div className="grid grid-cols-5 gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((seat) => (
-                    <Button
-                      key={seat}
-                      variant={selectedSeat === seat ? "default" : "outline"}
-                      onClick={() => setSelectedSeat(seat)}
-                      disabled={game.players.some((p) => p.seat === seat)}
-                    >
-                      {seat}
-                    </Button>
-                  ))}
+                <div className="relative h-60 w-full">
+                  {/* Top row - seats 1,2,3 */}
+                  <div className="absolute flex justify-center w-full top-0 gap-4">
+                    {[1, 2, 3].map((seat) => {
+                      const player = game.players.find((p) => p.seat === seat);
+                      return (
+                        <Button
+                          key={seat}
+                          variant={
+                            selectedSeat === seat ? "default" : "outline"
+                          }
+                          onClick={() => setSelectedSeat(seat)}
+                          disabled={player !== undefined}
+                          className="w-12 h-12 rounded-full"
+                        >
+                          {player ? player.name.charAt(0).toUpperCase() : seat}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Right side - seats 4,5 */}
+                  <div className="absolute flex flex-col right-0 top-1/4 h-1/2 justify-around">
+                    {[4, 5].map((seat) => {
+                      const player = game.players.find((p) => p.seat === seat);
+                      return (
+                        <Button
+                          key={seat}
+                          variant={
+                            selectedSeat === seat ? "default" : "outline"
+                          }
+                          onClick={() => setSelectedSeat(seat)}
+                          disabled={player !== undefined}
+                          className="w-12 h-12 rounded-full"
+                        >
+                          {player ? player.name.charAt(0).toUpperCase() : seat}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Bottom row - seats 6,7,8 */}
+                  <div className="absolute flex justify-center w-full bottom-0 gap-4">
+                    {[6, 7, 8].map((seat) => {
+                      const player = game.players.find((p) => p.seat === seat);
+                      return (
+                        <Button
+                          key={seat}
+                          variant={
+                            selectedSeat === seat ? "default" : "outline"
+                          }
+                          onClick={() => setSelectedSeat(seat)}
+                          disabled={player !== undefined}
+                          className="w-12 h-12 rounded-full"
+                        >
+                          {player ? player.name.charAt(0).toUpperCase() : seat}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Left side - seats 9,10 */}
+                  <div className="absolute flex flex-col left-0 top-1/4 h-1/2 justify-around">
+                    {[9, 10].map((seat) => {
+                      const player = game.players.find((p) => p.seat === seat);
+                      return (
+                        <Button
+                          key={seat}
+                          variant={
+                            selectedSeat === seat ? "default" : "outline"
+                          }
+                          onClick={() => setSelectedSeat(seat)}
+                          disabled={player !== undefined}
+                          className="w-12 h-12 rounded-full"
+                        >
+                          {player ? player.name.charAt(0).toUpperCase() : seat}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Center poker table oval */}
+                  <div className="absolute left-1/2 top-1/2 w-3/4 h-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-green-700/70 flex items-center justify-center">
+                    <span className="text-white text-sm">TABLE</span>
+                  </div>
                 </div>
                 <Button
                   onClick={handleJoinGame}
